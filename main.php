@@ -76,26 +76,84 @@ try {
         'Content-Length: ' . strlen($data_string)
     ));
 
+    function endProgram($with_error = false, $error = null) {
+        if ($with_error) {
+            echo $error;
+            exit(2);
+        } else {
+            exit(0);
+        }
+    }
+
+    function getStatus($url, $config) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'X-StorageApi-Token: ' . $config['parameters']['storageApiToken']
+        ));
+
+        $result = curl_exec($ch);
+        curl_close($ch);
+
+        if ($result === false) {
+            try {
+                endProgram(true, curl_error($ch));
+            } catch (Exception $exception) {
+                endProgram(true, $exception->getMessage());
+            }
+        } else {
+            try {
+                $result = json_decode($result, true);
+                if (isset($result['status']) && $result['status'] == "processing") {
+                    sleep(5);
+                    getStatus($url, $config);
+                } elseif (isset($result['status']) && $result['status'] == "success") {
+                    endProgram(false);
+                } else {
+                    if (isset($result['status'])) {
+                        endProgram(true, 'Unknown status: '. $result['status']);
+                    } else {
+                        endProgram(true, 'Result url without status');
+                    }
+                }
+            } catch (Exception $exception) {
+                endProgram(true, $exception->getMessage());
+            }
+        }
+    }
+
 
     $result = curl_exec($ch);
-    $result = json_decode($result, true);
-    $error = curl_error($ch);
 
-    $statusCode = 200;
-    try {
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    } catch (Exception $exception) {
-        $error .= ' - ' . $exception;
-    }
-
-    curl_close($ch);
-    if ($statusCode < 200 || $statusCode >= 400) {
-        echo $error;
-        exit(2);
+    if ($result === false) {
+        try {
+            endProgram(true, curl_error($ch));
+            curl_close($ch);
+        } catch (Exception $exception) {
+            curl_close($ch);
+            endProgram(true, $exception->getMessage());
+        }
     } else {
+        curl_close($ch);
+        $result = json_decode($result, true);
 
-        exit(0);
+        if (isset($result['url']) && $result['url'] != "") {
+            getStatus($result['url'], $config);
+        } else {
+            if (isset($result['status'])) {
+                if($result['status'] == 'waiting') {
+                    endProgram(true, 'There is no URL with status');
+                } else {
+                    endProgram(true, 'Status: '.$result['status']);
+                }
+            } else {
+                endProgram(true, 'There is response status');
+            }
+        }
     }
+
+
 } catch (InvalidArgumentException $e) {
     echo $e->getMessage();
     exit(1);
