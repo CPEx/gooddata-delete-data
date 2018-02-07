@@ -148,7 +148,7 @@ try {
                     endProgram(true, 'Status: '.$result['status']);
                 }
             } else {
-                endProgram(true, 'There is response status');
+                endProgram(true, 'There is not response status');
             }
         }
     }
