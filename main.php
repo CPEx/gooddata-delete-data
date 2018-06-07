@@ -73,7 +73,8 @@ try {
     curl_setopt($ch, CURLOPT_HTTPHEADER, array(
         'X-StorageApi-Token: ' . $config['parameters']['storageApiToken'],
         'Content-Type: application/json',
-        'Content-Length: ' . strlen($data_string)
+        'Content-Length: ' . strlen($data_string),
+        'User-Agent: CPEX-remove-old-data/0.1'
     ));
 
     function endProgram($with_error = false, $error = null) {
